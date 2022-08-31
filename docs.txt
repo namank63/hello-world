@@ -142,6 +142,9 @@ Steps to setup Tomcat Server
             credentials: deployer
             Tomcat URL: <public_ip>:8080
 
+Setup auto build and Deploy
+  Dashboard > BuildAndDeployJob > configure > Build Triggers
+    Select Poll SCM and add schedule * * * * *  (5 starts with spaces)
 
 Steps to install/setup Docker
   setup linux server
