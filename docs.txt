@@ -11,11 +11,13 @@ Open SSH
   SSH Start: sudo service ssh start
   SSH Status: sudo service ssh status
 
+
 Tomcat
   start: goto /opt/tomcat/bin run ./startup.sh
   stop: goto /opt/tomcat/bin run ./shutdown.sh
   quick start: tomcatup
   quick stop: tomcatdown
+
 
 Docker
   Help: docker --help
@@ -24,9 +26,19 @@ Docker
   Images: docker images
   All cotainers: docker ps -a
   Running cotainers: docker ps
-  New Container: docker run -d --name tomcat-container -p 8082:8082 tomcat
+  delete all container: docker container prune
+  delete all images: docker image prune -a
+  New Container: docker run -d --name tomcat-container -p 8081:8080 tomcat  
+    (8081: external and 8080 internal)
   Login Container: docker exec -u 0 -it e6bd007953c7 /bin/sh
-
+  How to create docker container (video 20)
+    We need a docker image to create a docker container
+    pull image from dockerhub (hub.docker.com)
+      docker pull tomcat
+    404 error solution (video 21)
+      docker exec -it tomcat-container /bin/bash
+      $ cd webapps.dist
+      $ cp -R * ../webapps
 
 Firewall
   firewall-cmd --list-ports
@@ -142,9 +154,11 @@ Steps to setup Tomcat Server
             credentials: deployer
             Tomcat URL: <public_ip>:8080
 
+
 Setup auto build and Deploy
   Dashboard > BuildAndDeployJob > configure > Build Triggers
     Select Poll SCM and add schedule * * * * *  (5 starts with spaces)
+
 
 Steps to install/setup Docker
   setup linux server
@@ -161,7 +175,38 @@ Steps to install/setup Docker
     sudo systemctl status docker
   start docker server
     service docker start
-  basic docker commands
+
+
+Integrate docker with jenkins
+  create a dockeradmin user
+    useradd dockeradmin
+    passwd dockeradmin
+    usermod -aG docker dockeradmin
+    usermod -aG sudo dockeradmin
+    # visudo
+      root    ALL=(ALL:ALL) ALL
+      dockeradmin ALL=(ALL:ALL) ALL
+    sudo mkdir /home/me
+    sudo usermod --shell /bin/bash --home /home/me me
+    sudo chown -R me:me /home/me
+    cp /etc/skel/.* /home/me/
+  install "Publish Over SSH" plugin
+    nano /etc/ssh/sshd_config
+    check passwordauthentication is yes or no
+    service sshd reload
+  Add dockerhost to jenkins "configure system"
+    search plugin: "publish over ssh"
+    config system > publish over SSH > Add SSH
+      name: dockerserver
+      hostname: 192.168.1.13 
+      username: dockeradmin
+  make clone of BuildAndDeployJob project 
+    In config setting delete post-build action and add new SSH Server
+    name: dockerserver
+    source files: webapp/target/*.war
+    remote prefix: webapp/target
+    remote directory:
+    save
 
 
 Connect SSH PuTTy
@@ -170,3 +215,42 @@ Connect SSH PuTTy
     sudo apt install net-tools
   view public ip
     ifconfig
+
+
+Write docker file 
+  Commands
+    FROM: To pull the base image
+    RUN: To execute commands
+    CMD: To provide defaults for an existing container (can be overwritten)
+    ENTRYPOINT: To configure a container that will run as an executable
+    WORKDIR: To set the working directory
+    COPY: To copy a directory from your local machine to the docker container
+    ADD: To copy files and folders from your local machine to docker containers
+    EXPOSE: Informs docker that the container listing on the specified network ports at runtime
+    ENV: To set enviroment variables
+  Install tomcat on CentOS
+    Pull centos from dockerhub - FROM
+    install java - RUN
+    Create /opt/tomcat directory - RUN
+    Change work directory to /opt/tomcat - WORKDIR
+    Download tomcat packages - ADD/RUN
+    Extract tar.gz file - RUN
+    Rename to tomcat directory - RUN
+    Tell to docker that it runs on port 8080 - EXPOSE
+    start tomcat services - CMD
+  Dockerfile
+    FROM centos
+    RUN cd /etc/yum.repos.d/
+    RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+    RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+    RUN yum -y install java
+    RUN mkdir /opt/tomcat
+    WORKDIR /opt/tomcat
+    ADD https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.65/bin/apache-tomcat-9.0.65.tar.gz .
+    RUN tar -xvzf apache-tomcat-9.0.65.tar.gz
+    RUN mv apache-tomcat-9.0.65/* /opt/tomcat
+    EXPOSE 8080
+    CMD ["/opt/tomcat/bin/catalina.sh","run"]
+  Build
+    docker build -t mytomcat .
+  
