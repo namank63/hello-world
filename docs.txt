@@ -1,34 +1,169 @@
-Jenkins ID: admin
-Jenkins Pass: 4055994337964dd1a449d2ac3701cd54
+Jenkins
+  Jenkins ID: admin
+  Jenkins Pass: admin
+  Start: sudo systemctl start jenkins 
+  Stop: sudo systemctl stop jenkins 
+  Restart: sudo systemctl restart jenkins 
+  Status: sudo systemctl status jenkins
+   
 
-Start: sudo systemctl start jenkins 
+Open SSH
+  SSH Start: sudo service ssh start
+  SSH Status: sudo service ssh status
 
-Stop: sudo systemctl stop jenkins 
+Tomcat
+  start: goto /opt/tomcat/bin run ./startup.sh
+  stop: goto /opt/tomcat/bin run ./shutdown.sh
+  quick start: tomcatup
+  quick stop: tomcatdown
 
-Restart: sudo systemctl restart jenkins 
-
-Status: sudo systemctl status jenkins 
-
-
-
-
-
-
-SSH Start: sudo service ssh start
-SSH Status: sudo service ssh status
-
-
-Docker Start: service docker start
-Docker Status: service docker status
-
-
-
-firewall-cmd --list-ports
-firewall-cmd --add-port 22/tcp
-
-firewall-cmd --add-port 8080/tcp
-
+Docker
+  Help: docker --help
+  Start: service docker start
+  Status: service docker status
+  Images: docker images
+  All cotainers: docker ps -a
+  Running cotainers: docker ps
+  New Container: docker run -d --name tomcat-container -p 8082:8082 tomcat
+  Login Container: docker exec -u 0 -it e6bd007953c7 /bin/sh
 
 
-docker run -d --name tomcat-container -p 8082:8082 tomcat
-docker exec -u 0 -it e6bd007953c7 /bin/sh
+Firewall
+  firewall-cmd --list-ports
+  firewall-cmd --add-port 22/tcp
+
+
+Maven
+  install loc: /opt/maven
+  workspace loc: /var/lib/jenkins/workspace/
+  war loc: /var/lib/jenkins/workspace/<Job_Name>/<Project_Name>/target
+
+
+Steps to install/setup Jenkins
+  setup linux server
+    use ubuntu server in virtual box
+  install java
+    sudo apt-get install openjdk-11-jdk
+  install jenkins
+    wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key |sudo gpg --dearmor -o /usr/share/keyrings/jenkins.gpg
+    sudo sh -c 'echo deb [signed-by=/usr/share/keyrings/jenkins.gpg] http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+    sudo apt update
+    sudo apt install jenkins
+  start jenkins
+    sudo systemctl start jenkins
+  access web ui on port 8080
+    localhost:8080
+    <public ip>:8080
+    password loc: /var/lib/jenkins/secrets/initialAdminPassword
+  integrate git in jenkins
+    install:  manage jenkins > manage plugins > github
+    setup: manage jenkins > global tool configuration > Git
+      Name: Git
+      Path: git
+    add Job
+  integrate maven in jenkins
+    setup maven on jenkins server
+      goolge "download maven" > goto official link > copy link for "Binary tar.gz archive"
+      $ cd /opt
+      $ sudo wget <link>
+      $ sudo tar -xvzf <package>
+      $ mv <package> maven
+    setup enviroment variable
+      # cd ~
+      # nano .bashrc and add these lines at bottom
+        M2_HOME=/opt/maven
+        M2=/opt/maven/bin
+        JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 <OR jdk name>
+        PATH=$PATH:$HOME/bin:$JAVA_HOME:$M2_HOME:$M2
+        export PATH
+      run these to confirm
+        # source .bashrc
+        # echo $PATH
+    install maven plugin
+      install: manage jenkins > manage plugins > maven integration
+    configure maven and java
+      manage jenkins > global tool configuration >
+        Add JDK 
+          Name: java-11
+          JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+        Add Maven
+          Name: maven-3.8.6
+          MAVEN_HOME: /opt/maven
+  
+
+Steps to setup Tomcat Server
+  reference link: https://github.com/yankils/Simple-DevOps-Project/blob/master/Tomcat/tomcat_installation.MD
+  setup linux server
+    use ubuntu server in virtual box
+  install java
+    $ sudo apt-get install openjdk-11-jdk
+    $ cd /opt
+    google "download tomcat" > goto official tomcat 9 > copy link for "tar.gz"
+    $ wget <link>
+    $ tar -xvzf <package>
+    $ mv <extracted package> tomcat
+  configure Tomcat
+    comment <Value classname="...RemoteAddrValue"... in these 2 files
+      $ nano /opt/tomcat/webapps/host-manager/META-INF/context.xml
+      $ nano /opt/tomcat/webapps/manager//META-INF/context.xml
+    start tomcat server (quick start setup)
+      ln -s /opt/tomcat/bin/startup.sh /usr/local/bin/tomcatup
+      ln -s /opt/tomcat/bin/shutdown.sh /usr/local/bin/tomcatdown
+    add users
+      open $ nano /opt/tomcat/conf/tomcat-users.xml
+      add users from the reference page i.e.
+        <role rolename="manager-gui"/>
+        <role rolename="manager-script"/>
+        <role rolename="manager-jmx"/>
+        <role rolename="manager-status"/>
+        <user username="admin" password="admin" roles="manager-gui, manager-script, manager-jmx, manager-status"/>
+        <user username="deployer" password="deployer" roles="manager-script"/>
+        <user username="tomcat" password="s3cret" roles="manager-gui"/>
+  access Web UI on port 8080
+    localhost:8080
+    <public ip>:8080
+  integrate tomcat in jenkins
+    install: manage jenkins > manage plugins > "deploy to container"
+    configure tomcat server with credentials
+      manage jenkins > manage credentials > jenkins > global credentials > add credentials
+        kind: username with password
+        scope: global
+        username: deployer
+        password: deployer
+        id: tomcat_deployer
+        desc: tomcat_deployer
+      dashboard > new item > name "BuildAndDeployJob" with maven project > setup this project (16th video)
+        add git repo url
+        goals and options: clean install
+        Post-build Action: Deploy war/ear to a container
+          WAR/EAR files: **/*.war
+          Context path: leave it blank
+          Add Container: Tomcat 8.x Remote
+            credentials: deployer
+            Tomcat URL: <public_ip>:8080
+
+
+Steps to install/setup Docker
+  setup linux server
+    use ubuntu server in virtual box
+  install docker
+    sudo apt update
+    sudo apt install apt-transport-https ca-certificates curl software-properties-common
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+    sudo apt update
+    apt-cache policy docker-ce
+    sudo apt install docker-ce
+    docker --version
+    sudo systemctl status docker
+  start docker server
+    service docker start
+  basic docker commands
+
+
+Connect SSH PuTTy
+  install OpenSSH
+  install net tools
+    sudo apt install net-tools
+  view public ip
+    ifconfig
