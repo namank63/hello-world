@@ -1,0 +1,34 @@
+Jenkins ID: admin
+Jenkins Pass: 4055994337964dd1a449d2ac3701cd54
+
+Start: sudo systemctl start jenkins 
+
+Stop: sudo systemctl stop jenkins 
+
+Restart: sudo systemctl restart jenkins 
+
+Status: sudo systemctl status jenkins 
+
+
+
+
+
+
+SSH Start: sudo service ssh start
+SSH Status: sudo service ssh status
+
+
+Docker Start: service docker start
+Docker Status: service docker status
+
+
+
+firewall-cmd --list-ports
+firewall-cmd --add-port 22/tcp
+
+firewall-cmd --add-port 8080/tcp
+
+
+
+docker run -d --name tomcat-container -p 8082:8082 tomcat
+docker exec -u 0 -it e6bd007953c7 /bin/sh
